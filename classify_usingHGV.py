@@ -43,6 +43,8 @@ parser = argparse.ArgumentParser()
 # classifier options
 parser.add_argument('--ClassifierEpochs', type=int, default=50, help='number of epochs to train the classifier, default = 50')
 
+parser.add_argument('--input_h5ad', type=str, default='', help='path to input h5ad file, default=None')
+parser.add_argument('--num_clusters', type=str, default='', help='number of unique clusters, default=None')
 parser.add_argument('--data_type', type=str, default="scanpy", help='type of train/test data, default="scanpy"')
 parser.add_argument("--save_iter", type=int, default=1, help="Default=1")
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=24)
@@ -82,11 +84,14 @@ def main():
         device = "cuda";
         print('==> Using GPU (CUDA)')
         
-    else :
+    elif(torch.backends.mps.is_available()):
+        device = torch.device("mps");
+        print('==> Using M1 GPUs')
+        
+    else:
         device = "cpu"
         print('==> Using CPU')
         print('    -> Warning: Using CPUs will yield to slower training time than GPUs')
-    
     
     
     """
@@ -99,7 +104,7 @@ def main():
 
     if opt.data_type.lower() == "scanpy":
         print("     -> Reading HVG 68K PBMC")
-        train_data_loader, valid_data_loader = Scanpy_IO('/home/jovyan/NACT_Project/N-ACT_Data/HighlyVariableGeneSelected/HGV_68KPBMC_TrainTestSplit_3_1_2022.h5ad',
+        train_data_loader, valid_data_loader = Scanpy_IO(opt.input_h5ad,
                                                         test_no_valid = True,
                                                         batchSize=opt.batchSize, 
                                                         workers = opt.workers,
@@ -108,21 +113,8 @@ def main():
         # get input output information for the network
         inp_size = [batch[0].shape[1] for _, batch in enumerate(valid_data_loader, 0)][0];
         labs = [batch[1] for _, batch in enumerate(valid_data_loader, 0)][0];
-        number_of_classes = 10;
+        number_of_classes = opt.num_clusters;
         print(f"==> Number of classes {number_of_classes}")
-        
-        # print("     -> Reading HVG NeuroCOVID")
-        # train_data_loader, valid_data_loader = Scanpy_IO('/home/jovyan/NACT_Project/N-ACT_Data/HighlyVariableGeneSelected/HGV_NeuroCovid_TrainTestSplit_3_1_2022.h5ad',
-        #                                                 test_no_valid = True,
-        #                                                 batchSize=opt.batchSize, 
-        #                                                 workers = opt.workers,
-        #                                                 log=False,
-        #                                                 verbose = 1)
-        # inp_size = [batch[0].shape[1] for _, batch in enumerate(valid_data_loader, 0)][0];
-        # labs = [batch[1] for _, batch in enumerate(valid_data_loader, 0)][0];
-        # number_of_classes = 16
-        # print(f"==> Number of classes {number_of_classes}")
-        # print(f"==> Number of genes {inp_size}")
         
     
     elif opt.data_type.lower() == "csv":
